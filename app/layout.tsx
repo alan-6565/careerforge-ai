@@ -20,7 +20,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable} h-full`}>
-      <body className="h-full bg-gray-950 font-sans antialiased">
+      <body className="h-full bg-gray-50 font-sans antialiased">
         <ClerkProvider>
           {children}
           <Toaster richColors position="top-right" />
