@@ -70,13 +70,36 @@ const EMPTY: ResumeData = {
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 const STEPS = [
-  { key: "personal",    label: "Personal Info",  icon: User         },
-  { key: "summary",     label: "Summary",        icon: FileText     },
-  { key: "experience",  label: "Experience",     icon: Briefcase    },
-  { key: "education",   label: "Education",      icon: GraduationCap},
-  { key: "skills",      label: "Skills",         icon: Star         },
-  { key: "projects",    label: "Projects",       icon: FolderOpen   },
+  { key: "personal",    label: "Personal Info",  icon: User,          optional: false },
+  { key: "summary",     label: "Summary",        icon: FileText,      optional: false },
+  { key: "experience",  label: "Experience",     icon: Briefcase,     optional: false },
+  { key: "education",   label: "Education",      icon: GraduationCap, optional: true  },
+  { key: "skills",      label: "Skills",         icon: Star,          optional: false },
+  { key: "projects",    label: "Projects",       icon: FolderOpen,    optional: true  },
 ];
+
+// ─── Validation — returns true if step is complete ───────────────────────────
+function isStepComplete(key: string, data: ResumeData, skipped: Set<string>): boolean {
+  if (skipped.has(key)) return true;
+  switch (key) {
+    case "personal":
+      return !!(data.firstName.trim() && data.lastName.trim() && data.email.trim() && data.phone.trim());
+    case "summary":
+      return !!(data.summary.trim());
+    case "experience":
+      return data.experience.length > 0 &&
+        data.experience.every(e => e.company.trim() && e.role.trim() && e.startDate.trim());
+    case "education":
+      return data.education.length > 0 &&
+        data.education.every(e => e.school.trim() && e.degree.trim());
+    case "skills":
+      return !!(data.skills.trim());
+    case "projects":
+      return !!(data.projects.trim());
+    default:
+      return false;
+  }
+}
 
 // ─── Resume Preview ───────────────────────────────────────────────────────────
 function ResumePreview({ data }: { data: ResumeData }) {
@@ -389,6 +412,15 @@ export default function ResumePage() {
   const [data, setData]       = useState<ResumeData>(EMPTY);
   const [step, setStep]       = useState(0);
   const [preview, setPreview] = useState(false);
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+
+  function toggleSkip(key: string) {
+    setSkipped(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
 
   function handleDownload() {
     const printWindow = window.open("", "_blank");
@@ -460,28 +492,33 @@ export default function ResumePage() {
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-3 space-y-1">
             {STEPS.map((s, i) => {
               const Icon = s.icon;
-              const done = i < step;
-              const active = i === step;
+              const active   = i === step;
+              const complete = isStepComplete(s.key, data, skipped);
+              const isSkipped = skipped.has(s.key);
               return (
                 <button
                   key={s.key}
                   onClick={() => setStep(i)}
                   className={cn(
                     "flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
-                    active ? "bg-violet-50 text-violet-700" :
-                    done   ? "text-gray-600 hover:bg-gray-50" :
-                             "text-gray-400 hover:bg-gray-50"
+                    active    ? "bg-violet-50 text-violet-700" :
+                    complete  ? "text-gray-600 hover:bg-gray-50" :
+                                "text-gray-400 hover:bg-gray-50"
                   )}
                 >
                   <div className={cn(
                     "flex h-6 w-6 items-center justify-center rounded-full shrink-0 text-xs font-bold",
-                    active ? "bg-violet-600 text-white" :
-                    done   ? "bg-green-500 text-white"  :
-                             "bg-gray-100 text-gray-400"
+                    active      ? "bg-violet-600 text-white" :
+                    isSkipped   ? "bg-gray-300 text-white"   :
+                    complete    ? "bg-green-500 text-white"   :
+                                  "bg-gray-100 text-gray-400"
                   )}>
-                    {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    {isSkipped ? "—" : complete ? <Check className="h-3.5 w-3.5" /> : i + 1}
                   </div>
-                  {s.label}
+                  <span className="flex-1">{s.label}</span>
+                  {s.optional && !active && (
+                    <span className="text-xs text-gray-300">optional</span>
+                  )}
                 </button>
               );
             })}
@@ -493,15 +530,43 @@ export default function ResumePage() {
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden flex-1">
             <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">{STEPS[step].label}</h2>
+                <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  {STEPS[step].label}
+                  {STEPS[step].optional && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400">optional</span>
+                  )}
+                </h2>
                 <p className="text-xs text-gray-400">Step {step + 1} of {STEPS.length}</p>
               </div>
-              <div className="h-1.5 w-24 rounded-full bg-gray-100 overflow-hidden">
-                <div className="h-1.5 rounded-full bg-violet-500 transition-all duration-300" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+              <div className="flex items-center gap-3">
+                {STEPS[step].optional && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={skipped.has(STEPS[step].key)}
+                      onChange={() => toggleSkip(STEPS[step].key)}
+                      className="accent-gray-400 h-3.5 w-3.5"
+                    />
+                    <span className="text-xs text-gray-400">
+                      {STEPS[step].key === "education" ? "No education to add" : "Skip this section"}
+                    </span>
+                  </label>
+                )}
+                <div className="h-1.5 w-24 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-violet-500 transition-all duration-300" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+                </div>
               </div>
             </div>
             <div className="p-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
-              {currentForm}
+              {skipped.has(STEPS[step].key) ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
+                    <Check className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">This section is skipped</p>
+                  <p className="text-xs text-gray-400">Uncheck the box above to add content</p>
+                </div>
+              ) : currentForm}
             </div>
           </div>
 
