@@ -376,7 +376,7 @@ function ProjectsForm({ data, onChange }: { data: ResumeData; onChange: (d: Resu
       <div>
         <label className="text-xs font-medium text-gray-600">Projects</label>
         <p className="text-xs text-gray-400 mt-0.5">Describe your notable projects — each on a new line</p>
-        <textarea value={data.projects} onChange={e => onChange({ ...data, projects: e.target.value })} rows={8} placeholder="CareerForge AI — AI-powered career platform built with Next.js, Claude API, and Supabase. Full-stack application with resume optimization, interview prep, and job tracking.
+        <textarea value={data.projects} onChange={e => onChange({ ...data, projects: e.target.value })} rows={8} placeholder="JumpStart — AI-powered career platform built with Next.js, Claude API, and Supabase. Full-stack application with resume optimization, interview prep, and job tracking.
 
 Sports Excitement App — React Native mobile app for sports fans..." className="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-none" />
       </div>

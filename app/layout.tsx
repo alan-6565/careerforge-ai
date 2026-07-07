@@ -10,7 +10,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "CareerForge AI — Your AI Career Operating System",
+  title: "JumpStart — Your AI Career Operating System",
   description:
     "Build the perfect resume, ace interviews, and land your dream job with AI.",
 };

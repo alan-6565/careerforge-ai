@@ -17,15 +17,14 @@ export default async function Home() {
 
       {/* Headline */}
       <h1 className="max-w-3xl text-5xl font-bold leading-tight text-white sm:text-6xl">
-        Land your{" "}
         <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
-          dream job
+          JumpStart
         </span>{" "}
-        with AI
+        your career with AI
       </h1>
 
       <p className="mt-6 max-w-xl text-lg text-gray-400">
-        CareerForge AI is your all-in-one career operating system. Build
+        JumpStart is your all-in-one AI career operating system. Build
         resumes, optimize for ATS, prep for interviews, and track every
         application — all powered by Claude AI.
       </p>
