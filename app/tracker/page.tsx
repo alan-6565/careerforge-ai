@@ -291,13 +291,13 @@ export default function TrackerPage() {
           { label: "Offers",             value: offers,     color: "text-green-600"  },
           { label: "Rejected",           value: rejected,   color: "text-red-500"    },
         ].map((s, i) => (
-          <>
-            {i > 0 && <div key={`div-${i}`} className="h-8 w-px bg-gray-100" />}
-            <div key={s.label} className="flex-1 text-center">
+          <div key={s.label} className="contents">
+            {i > 0 && <div className="h-8 w-px bg-gray-100" />}
+            <div className="flex-1 text-center">
               <p className={cn("text-2xl font-bold", s.color)}>{s.value}</p>
               <p className="mt-0.5 text-xs text-gray-400">{s.label}</p>
             </div>
-          </>
+          </div>
         ))}
       </div>
 
