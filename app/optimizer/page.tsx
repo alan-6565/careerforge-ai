@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Zap, CheckCircle, XCircle, AlertCircle,
   ChevronUp, ChevronDown, Loader2, ArrowRight,
+  Upload, FileText, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,22 +48,45 @@ function ScoreRing({ score, label, color }: { score: number; label: string; colo
 }
 
 const suggestionStyles = {
-  critical: { icon: XCircle, color: "text-red-500", bg: "bg-red-50 border-red-100" },
-  improvement: { icon: AlertCircle, color: "text-yellow-500", bg: "bg-yellow-50 border-yellow-100" },
-  tip: { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50 border-green-100" },
+  critical:    { icon: XCircle,      color: "text-red-500",    bg: "bg-red-50 border-red-100"    },
+  improvement: { icon: AlertCircle,  color: "text-yellow-500", bg: "bg-yellow-50 border-yellow-100" },
+  tip:         { icon: CheckCircle,  color: "text-green-500",  bg: "bg-green-50 border-green-100"   },
 };
 
 export default function OptimizerPage() {
-  const [resume, setResume] = useState("");
+  const [resume, setResume]             = useState("");
   const [jobDescription, setJobDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<Result | null>(null);
-  const [error, setError] = useState("");
+  const [loading, setLoading]           = useState(false);
+  const [result, setResult]             = useState<Result | null>(null);
+  const [error, setError]               = useState("");
   const [expandedBullet, setExpandedBullet] = useState<number | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [dragging, setDragging]         = useState(false);
+  const fileInputRef                    = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    setUploadedFile(file);
+    setUploadLoading(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/ai/parse-resume", { method: "POST", body: form });
+      if (!res.ok) throw new Error("Failed to read file");
+      const { rawText } = await res.json();
+      setResume(rawText);
+    } catch {
+      setError("Could not read file. Try copy-pasting your resume text instead.");
+      setUploadedFile(null);
+    } finally {
+      setUploadLoading(false);
+    }
+  }
 
   async function analyze() {
     if (!resume.trim() || !jobDescription.trim()) {
-      setError("Please paste both your resume and the job description.");
+      setError("Please add your resume and the job description.");
       return;
     }
     setError("");
@@ -78,7 +102,7 @@ export default function OptimizerPage() {
       const data = await res.json();
       setResult(data);
     } catch {
-      setError("Something went wrong. Make sure your Anthropic API key is set.");
+      setError("Something went wrong. Make sure your Anthropic API key has credits.");
     } finally {
       setLoading(false);
     }
@@ -101,22 +125,81 @@ export default function OptimizerPage() {
       {/* Input */}
       {!result && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+          {/* Resume — upload or paste */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Your Resume</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Your Resume</label>
+              {uploadedFile && (
+                <button
+                  onClick={() => { setUploadedFile(null); setResume(""); }}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
+                >
+                  <X className="h-3 w-3" /> Remove file
+                </button>
+              )}
+            </div>
+
+            {/* Upload zone */}
+            {!uploadedFile && (
+              <div
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 transition-all",
+                  dragging ? "border-violet-400 bg-violet-50" : "border-gray-200 hover:border-violet-300 hover:bg-violet-50/30"
+                )}
+              >
+                <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.txt" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                {uploadLoading ? (
+                  <><Loader2 className="h-6 w-6 animate-spin text-violet-500" /><p className="text-xs text-violet-600">Reading file...</p></>
+                ) : (
+                  <>
+                    <Upload className="h-6 w-6 text-gray-400" />
+                    <p className="text-xs font-medium text-gray-600">Drop PDF or DOCX here</p>
+                    <p className="text-xs text-gray-400">or click to browse</p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Uploaded file badge */}
+            {uploadedFile && (
+              <div className="flex items-center gap-3 rounded-xl border border-green-100 bg-green-50 px-4 py-3">
+                <FileText className="h-5 w-5 text-green-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium text-green-800">{uploadedFile.name}</p>
+                  <p className="text-xs text-green-600">Resume text extracted ✓</p>
+                </div>
+              </div>
+            )}
+
+            {/* Divider */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-gray-100" />
+              <span className="text-xs text-gray-400">or paste text</span>
+              <div className="flex-1 h-px bg-gray-100" />
+            </div>
+
             <textarea
               value={resume}
               onChange={(e) => setResume(e.target.value)}
               placeholder="Paste your resume text here..."
-              className="h-64 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-none shadow-sm"
+              className="h-40 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-none shadow-sm"
             />
           </div>
+
+          {/* Job Description */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">Job Description</label>
             <textarea
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               placeholder="Paste the job description here..."
-              className="h-64 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-none shadow-sm"
+              className="flex-1 min-h-72 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-none shadow-sm"
             />
           </div>
         </div>

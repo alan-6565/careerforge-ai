@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   User, FileText, Briefcase, GraduationCap,
-  Star, FolderOpen, Award, Plus, Trash2,
+  Star, FolderOpen, Plus, Trash2,
   Download, Eye, ChevronRight, ChevronLeft, Check,
+  Upload, Loader2, X, FileUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -407,12 +408,167 @@ Sports Excitement App — React Native mobile app for sports fans..." className=
   );
 }
 
+// ─── Upload Zone ──────────────────────────────────────────────────────────────
+function UploadZone({ onParsed }: { onParsed: (data: ResumeData) => void }) {
+  const [dragging, setDragging]   = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [file, setFile]           = useState<File | null>(null);
+  const [preview, setPreview]     = useState<string | null>(null);
+  const [error, setError]         = useState("");
+  const [success, setSuccess]     = useState(false);
+  const inputRef                  = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback(async (f: File) => {
+    setFile(f);
+    setError("");
+    setSuccess(false);
+
+    // Show image preview for PDFs using object URL
+    if (f.type === "application/pdf") {
+      setPreview(URL.createObjectURL(f));
+    } else {
+      setPreview(null);
+    }
+
+    setLoading(true);
+    try {
+      const form = new FormData();
+      form.append("file", f);
+      const res = await fetch("/api/ai/parse-resume", { method: "POST", body: form });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to parse");
+      }
+      const { data } = await res.json();
+      onParsed(data);
+      setSuccess(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to parse resume");
+    } finally {
+      setLoading(false);
+    }
+  }, [onParsed]);
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Drop zone */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => inputRef.current?.click()}
+        className={cn(
+          "relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition-all",
+          dragging  ? "border-violet-400 bg-violet-50"  :
+          success   ? "border-green-400 bg-green-50"    :
+          error     ? "border-red-300 bg-red-50"        :
+                      "border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50/40"
+        )}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+        />
+
+        {loading ? (
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+            <p className="text-sm font-medium text-violet-700">Reading your resume with AI...</p>
+            <p className="text-xs text-violet-500">Extracting all fields automatically</p>
+          </div>
+        ) : success ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+              <Check className="h-5 w-5 text-green-600" />
+            </div>
+            <p className="text-sm font-semibold text-green-700">Resume imported successfully!</p>
+            <p className="text-xs text-green-600">All fields have been auto-filled below</p>
+            <button
+              onClick={e => { e.stopPropagation(); setFile(null); setPreview(null); setSuccess(false); }}
+              className="mt-1 text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              Upload a different file
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100">
+              <Upload className="h-6 w-6 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                Drop your resume here
+              </p>
+              <p className="mt-0.5 text-xs text-gray-400">
+                PDF, DOCX, or TXT — AI will auto-fill all fields
+              </p>
+            </div>
+            <span className="rounded-full border border-violet-200 bg-white px-4 py-1.5 text-xs font-medium text-violet-600">
+              Browse files
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* File preview card */}
+      {file && !loading && (
+        <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+          {/* PDF thumbnail */}
+          {preview ? (
+            <div className="h-14 w-10 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
+              <object data={preview} type="application/pdf" className="h-full w-full scale-150 origin-top-left pointer-events-none" />
+            </div>
+          ) : (
+            <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded border border-gray-200 bg-blue-50">
+              <FileUp className="h-5 w-5 text-blue-500" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="truncate text-sm font-medium text-gray-900">{file.name}</p>
+            <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB · {file.name.split(".").pop()?.toUpperCase()}</p>
+            {success && <p className="text-xs text-green-600 font-medium mt-0.5">✓ All fields imported</p>}
+          </div>
+          <button
+            onClick={() => { setFile(null); setPreview(null); setSuccess(false); setError(""); }}
+            className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
+          >
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ResumePage() {
-  const [data, setData]       = useState<ResumeData>(EMPTY);
-  const [step, setStep]       = useState(0);
-  const [preview, setPreview] = useState(false);
-  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [data, setData]         = useState<ResumeData>(EMPTY);
+  const [step, setStep]         = useState(0);
+  const [preview, setPreview]   = useState(false);
+  const [skipped, setSkipped]   = useState<Set<string>>(new Set());
+  const [showUpload, setShowUpload] = useState(true);
+
+  function handleParsed(parsed: ResumeData) {
+    setData(parsed);
+    setShowUpload(false);
+    setStep(0);
+  }
 
   function toggleSkip(key: string) {
     setSkipped(prev => {
@@ -483,6 +639,30 @@ export default function ResumePage() {
             <Download className="h-4 w-4" /> Download PDF
           </button>
         </div>
+      </div>
+
+      {/* Upload zone — collapsible */}
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowUpload(u => !u)}
+          className="flex w-full items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-100">
+              <Upload className="h-4 w-4 text-violet-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-900">Import from PDF or DOCX</p>
+              <p className="text-xs text-gray-400">AI auto-fills all fields from your existing resume</p>
+            </div>
+          </div>
+          <span className="text-xs font-medium text-violet-600">{showUpload ? "Hide" : "Upload resume"}</span>
+        </button>
+        {showUpload && (
+          <div className="border-t border-gray-100 p-5">
+            <UploadZone onParsed={handleParsed} />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-5 flex-1 min-h-0">

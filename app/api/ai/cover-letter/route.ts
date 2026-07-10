@@ -19,21 +19,24 @@ export async function POST(req: NextRequest) {
     creative:     "bold and memorable — open with a hook, show personality while staying relevant",
   };
 
-  const prompt = `You are an expert career coach writing a personalized cover letter.
+  const prompt = `You are an expert career coach writing a personalized, high-quality cover letter.
 
 Write a compelling cover letter for this candidate applying to ${role} at ${company}.
 
 Tone: ${toneGuide[tone] ?? toneGuide.professional}
 
 Requirements:
-- 3-4 paragraphs, max 350 words
-- Opening paragraph: strong hook that references the company specifically
-- Middle paragraphs: connect their actual experience/skills to the job requirements
-- Closing: confident call to action
-- Sound like a real human wrote it, not an AI
+- ALWAYS start with exactly: "Hello ${company} team,"
+- Then a blank line, then the opening paragraph
+- 3-4 paragraphs total, max 400 words
+- Opening paragraph: strong, specific hook — mention something real about ${company} (their products, mission, culture, or recent news) and why this candidate wants to be there specifically
+- Middle paragraphs: connect their ACTUAL experience and projects from the resume directly to the job requirements — be specific, use numbers/impact where possible
+- Closing paragraph: confident call to action, express genuine excitement, invite next steps
+- Sound like a real human who genuinely wants this job, not a template
 - Reference specific details from both the resume and job description
-- Do NOT use generic phrases like "I am writing to express my interest"
-- Do NOT use the word "leverage"
+- Do NOT use generic phrases like "I am writing to express my interest" or "I believe I would be a great fit"
+- Do NOT use the word "leverage" or "passionate"
+- End with: "Best," then a new line with the candidate's name (extract from resume)
 
 CANDIDATE RESUME:
 ${resume}
@@ -41,7 +44,7 @@ ${resume}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Return ONLY the cover letter text. No subject line, no "Dear Hiring Manager" header needed — start directly with the opening paragraph.`;
+Return ONLY the cover letter text. No extra explanation.`;
 
   // Stream the response
   const stream = await anthropic.messages.stream({

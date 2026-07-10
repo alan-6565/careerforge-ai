@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import {
   Mail, Loader2, Copy, Check, RotateCcw,
-  Sparkles, Building2, Briefcase, FileText,
+  Sparkles, Building2, Briefcase, FileText, Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +69,37 @@ export default function CoverLetterPage() {
     await navigator.clipboard.writeText(output);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function downloadPDF() {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Cover Letter — ${role} at ${company}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: "Times New Roman", serif;
+              font-size: 12px;
+              line-height: 1.8;
+              padding: 72px 80px;
+              color: #111;
+            }
+            p { margin-bottom: 16px; }
+            @page { margin: 0; size: letter; }
+          </style>
+        </head>
+        <body>
+          ${output.split("\n").map(line => `<p>${line || "&nbsp;"}</p>`).join("")}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
   }
 
   function reset() {
@@ -263,9 +294,15 @@ export default function CoverLetterPage() {
                   </button>
                   <button
                     onClick={copy}
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+                  </button>
+                  <button
+                    onClick={downloadPDF}
                     className="flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-600 transition-colors"
                   >
-                    {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Letter</>}
+                    <Download className="h-3.5 w-3.5" /> Download PDF
                   </button>
                 </div>
               </div>
